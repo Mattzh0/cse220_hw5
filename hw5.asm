@@ -124,7 +124,7 @@ print_student:
 	
 init_student_array:
 	# save start address of records
-    lw $t1, 0($sp)
+    lw $t2, 0($sp)
 
 	# save registers
     addi $sp, $sp, -28
@@ -140,7 +140,7 @@ init_student_array:
 	move $s1, $a1 # store base address of ID array
 	move $s2, $a2 # store base address of credits array
 	move $s3, $a3 # store base address of name pointer array
-	move $s4, $t1 # store the base address of the records struct array
+	move $s4, $t2 # store the base address of the records struct array
 	move $s5, $a0 # store num_students 
 
 	loop:
@@ -150,8 +150,8 @@ init_student_array:
 		# load arguments to a registers for init_student function call
 		lw $a0, 0($s1) # load current ID element
 		lw $a1, 0($s2) # load current credits element
-		lw $a2, 0($s3) # load current name pointer address
-		lw $a3, 0($s4) # load current records address
+		move $a2, $s3 # load current name pointer address
+		move $a3, $s4 # move current records address
 		jal init_student
 
 		addi $s0, $s0, 1 # increment loop counter
@@ -160,8 +160,8 @@ init_student_array:
 
 		# increment name pointer address until the after the next null terminator
 		inc_name:
-			lb $t2, 0($s3)
-			beq $t2, $zero, end_inc_name # if the current character is a null terminator, end the loop and increment one more time to get to start of next string
+			lb $t3, 0($s3)
+			beq $t3, $zero, end_inc_name # if the current character is a null terminator, end the loop and increment one more time to get to start of next string
 			addi $s3, $s3, 1 # move to next character
 			j inc_name
 		end_inc_name:
