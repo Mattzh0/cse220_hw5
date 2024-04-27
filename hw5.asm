@@ -186,6 +186,61 @@ init_student_array:
 	jr $ra
 	
 insert:
+	move $t0, $a0 # store record address
+	move $t1, $a1 # store base address of table
+
+	# load into $t2 the ID of the record given by the address
+	lb $t2, 0($t0) # extract first byte of record (ID bytes 15-22)
+	sll $t2, $t2, 14 # shift ID bytes 15-22 to the correct position
+	lb $t3, 1($t0) # extract second byte of record (ID bytes 7-15)
+	sll $t3, $t3, 6 # shift ID bytes 7-15 to the correct position
+	or $t2, $t2, $t3 # combine first and second bytes
+	lb $t3, 2($t0) # extract third byte of record (ID bytes 1-6, credits bytes 9-10)
+	srl $t3, $t3, 2 # shift to remove credits bytes 9-10 and correctly position ID bytes 1-6
+	or $t2, $t2, $t3 # combine third byte with (first,second)
+
+	# calculate and store id % table_size into $t3
+	div $t3, $a2 # stores the quotient of the div in lo, remainder (what we want) in hi
+	mfhi $t3
+
+	# calculate the start address ($t1) for linear probing
+	li $t4, 0 # counter for number of increments
+	increment_start:
+		bge $t4, $t3, lin_prob
+		addi $t1, $t1, 4
+		addi $t4, $t4, 1
+
+	# linear probing loop to find a free position
+	li $t4, 0 # reset counter to 0
+	li $t6, -1 # tombstone value
+	lin_prob:
+		lw $t5, 0($t1) # load the element at the current index
+		beq $t5, $zero, insert_table # if the element is zero (free), go to insert
+		beq $t5, $t6, insert_table # if the element is -1 (free, tombstone value) go to insert
+
+		addi $t1, $t1, 4 # increment to next address
+		addi $t4, $t4, 1 # increment counter
+		addi $t3, $t3, 1 # increment current index
+
+		beq $t4, $a2, fail # if counter = table_size, we checked all locations and failed to insert
+		bne $t3, $a2, lin_prob # if current index != table_size, move on as normal
+		
+		# otherwise, reset current index to beginning of table, and reset the address
+		li $t3, 0
+		move $t1, $a1
+		j lin_prob
+
+	insert_table:
+		# insert the record address into the table
+		sw $t0, 0($t1)
+		move $v0, $t3
+		j end_table
+
+	fail:
+		li $v0, -1
+		j end_table
+
+	end_table:
 	jr $ra
 	
 search:
