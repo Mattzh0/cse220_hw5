@@ -50,18 +50,21 @@ init_student:
 	jr $ra
 	
 print_student:
+	# save the address of record in $t2, since $a0 will be overwritten for printing
+	move $t2, $a0 
+	
 	# ID - all bytes will be loaded into $t0, which will be printed
 	# byte 0
-	lbu $t0, 0($a3)
+	lbu $t0, 0($t2)
 	sll $t0, $t0, 14
 
 	# byte 1
-	lbu $t1, 1($a3)
+	lbu $t1, 1($t2)
 	sll $t1, $t1, 6
 	or $t0, $t0, $t1 # combine byte 0 with byte 1
 
 	# byte 2 (ID part only)
-	lbu $t1, 2($a3)
+	lbu $t1, 2($t2)
 	srl $t1, $t1, 2
 	or $t0, $t0, $t1 # combine part of byte 2 with (byte 0, byte 1)
 
@@ -77,12 +80,12 @@ print_student:
 
 	# credits
 	# byte 2 (credits part only)
-	lbu $t0, 2($a3)
+	lbu $t0, 2($t2)
 	andi $t0, $t0, 0x03
 	sll $t0, $t0, 8
 
 	#byte 3
-	lbu $t1, 3($a3)
+	lbu $t1, 3($t2)
 	or $t0, $t0, $t1
 
 	# print credits
@@ -98,21 +101,21 @@ print_student:
 	# name
 	# first, load address into $t0
 	# byte 4
-	lbu $t0, 4($a3)
+	lbu $t0, 4($t2)
 	sll $t0, $t0, 24
 
 	# byte 5
-	lbu $t1, 5($a3)
+	lbu $t1, 5($t2)
 	sll $t1, $t1, 16
 	or $t0, $t0, $t1 # combine byte 4 and 5
 
 	#byte 6
-	lbu $t1, 6($a3)
+	lbu $t1, 6($t2)
 	sll $t1, $t1, 8
 	or $t0, $t0, $t1 # combine byte 6 with (byte 4, byte 5)
 
 	#byte 7
-	lbu $t1, 7($a3)
+	lbu $t1, 7($t2)
 	or $t0, $t0, $t1 # combine byte 7 with (byte 4, byte 5, byte 6)
 
 	# print the string at the address (name)
@@ -190,28 +193,25 @@ insert:
 	move $t1, $a1 # store base address of table
 
 	# load into $t2 the ID of the record given by the address
-	lb $t2, 0($t0) # extract first byte of record (ID bytes 15-22)
+	lbu $t2, 0($t0) # extract first byte of record (ID bytes 15-22)
 	sll $t2, $t2, 14 # shift ID bytes 15-22 to the correct position
-	lb $t3, 1($t0) # extract second byte of record (ID bytes 7-15)
+	lbu $t3, 1($t0) # extract second byte of record (ID bytes 7-15)
 	sll $t3, $t3, 6 # shift ID bytes 7-15 to the correct position
 	or $t2, $t2, $t3 # combine first and second bytes
-	lb $t3, 2($t0) # extract third byte of record (ID bytes 1-6, credits bytes 9-10)
+	lbu $t3, 2($t0) # extract third byte of record (ID bytes 1-6, credits bytes 9-10)
 	srl $t3, $t3, 2 # shift to remove credits bytes 9-10 and correctly position ID bytes 1-6
 	or $t2, $t2, $t3 # combine third byte with (first,second)
 
 	# calculate and store id % table_size into $t3
-	div $t3, $a2 # stores the quotient of the div in lo, remainder (what we want) in hi
+	div $t2, $a2 # stores the quotient of the div in lo, remainder (what we want) in hi
 	mfhi $t3
 
 	# calculate the start address ($t1) for linear probing
-	li $t4, 0 # counter for number of increments
-	increment_start:
-		bge $t4, $t3, lin_prob
-		addi $t1, $t1, 4
-		addi $t4, $t4, 1
+    sll $t4, $t3, 2 # multiply index by 4 (size of pointer)
+    add $t1, $t1, $t4 # add index to base address of table
 
 	# linear probing loop to find a free position
-	li $t4, 0 # reset counter to 0
+	li $t4, 0 # set loop counter to 0
 	li $t6, -1 # tombstone value
 	lin_prob:
 		lw $t5, 0($t1) # load the element at the current index
