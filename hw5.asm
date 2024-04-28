@@ -244,6 +244,52 @@ insert:
 	jr $ra
 	
 search:
+	move $t0, $a0 # store ID
+	move $t1, $a1 # store base address (also the start location of search)
+	li $t2, -1 # store tombstone value
+	li $t3, 0 # initialize register to keep track of count and index
+
+	search_loop:
+		# load the current record
+		lw $t4, 0($t1)
+
+		# if the record is null or tombstone, go directly to next_iteration
+		beq $t4, $zero, next_iteration
+		beq $t4, $t2, next_iteration
+
+		# extract the record ID into $t5
+		lbu $t5, 0($t4) # extract first byte of record (ID bytes 15-22)
+		sll $t5, $t5, 14 # shift ID bytes 15-22 to the correct position
+		lbu $t6, 1($t4) # extract second byte of record (ID bytes 7-15)
+		sll $t6, $t6, 6 # shift ID bytes 7-15 to the correct position
+		or $t5, $t5, $t6 # combine first and second bytes
+		lbu $t6, 2($t4) # extract third byte of record (ID bytes 1-6, credits bytes 9-10)
+		srl $t6, $t6, 2 # shift to remove credits bytes 9-10 and correctly position ID bytes 1-6
+		or $t5, $t5, $t6 # combine third byte with (first,second)
+		
+		# if current ID matches the one we're looking for, the search was a success
+		beq $t5, $t0, search_success
+
+		next_iteration:
+			addi $t1, $t1, 4 # increment address
+			addi $t3, $t3, 1 # increment count and index tracker
+			
+			# all positions were checked and the given ID was not found
+			beq $t3, $a2, search_fail
+
+			j search_loop
+	
+	search_success:
+		move $v0, $t4
+		move $v1, $t3
+		j search_end
+
+	search_fail:
+		li $v0, 0
+		li $v1, -1
+		j search_end
+
+	search_end:
 	jr $ra
 
 delete:
