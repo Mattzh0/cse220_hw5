@@ -293,4 +293,29 @@ search:
 	jr $ra
 
 delete:
+	addi $sp, $sp, -4
+	sw $ra, 0($sp)
+	
+	li $t7, -1 # store tombstone value
+
+	# make a function call to search
+	jal search
+	beq $v0, $zero, deletion_fail # search did not find the element to be deleted
+	
+	# calculate the address where record was found
+	sll $t8, $v1, 2
+	add $t8, $a1, $t8
+
+	# store the tombstone value at the calculated address
+	sw $t7, 0($t8)
+	move $v0, $v1
+	j deletion_end
+
+	deletion_fail:
+		li $v0, -1
+		j deletion_end
+
+	deletion_end:
+		lw $ra, 0($sp)
+		addi $sp, $sp, 4
 	jr $ra
